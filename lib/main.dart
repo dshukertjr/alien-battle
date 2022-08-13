@@ -49,6 +49,12 @@ class MyGame extends FlameGame with TapDetector, HasCollisionDetection {
   @override
   Future<void>? onLoad() async {
     await super.onLoad();
+
+    final background = BackgroundComponent()
+      ..width = size.x
+      ..height = size.y;
+    add(background);
+
     player = MyPlayer()
       ..width = 100
       ..height = 100;
@@ -127,6 +133,22 @@ class MyGame extends FlameGame with TapDetector, HasCollisionDetection {
     await Future.delayed(const Duration(milliseconds: 1500));
     _createNewCircle(true);
     _keepAddingPoisonCircles();
+  }
+}
+
+class BackgroundComponent extends PositionComponent with HasGameRef {
+  late final Sprite sprite;
+
+  @override
+  Future<void>? onLoad() async {
+    await super.onLoad();
+    sprite = await gameRef.loadSprite('background.jpg');
+  }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    sprite.render(canvas, size: Vector2(width, height));
   }
 }
 
