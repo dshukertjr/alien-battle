@@ -1,0 +1,1 @@
+const poisonHitCountToLose = 3;
