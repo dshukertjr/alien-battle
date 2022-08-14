@@ -166,7 +166,7 @@ class MyPlayer extends PositionComponent with HasGameRef, CollisionCallbacks {
     initialPosition = Vector2(0, gameRef.size.y);
     position = initialPosition;
 
-    add(RectangleHitbox());
+    add(RectangleHitbox()..collisionType = CollisionType.passive);
   }
 
   @override
