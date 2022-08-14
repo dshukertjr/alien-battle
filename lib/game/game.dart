@@ -1,13 +1,12 @@
 import 'dart:math';
 
-import 'package:flame/events.dart';
+import 'package:flame/collisions.dart';
 import 'package:flame/game.dart';
+import 'package:flame/input.dart';
 import 'package:flutter/material.dart';
-import 'package:multiplayer/game/circle.dart';
-import 'package:multiplayer/game/constants.dart';
-import 'package:multiplayer/game/player.dart';
+import 'package:multiplayer/game/alien.dart';
 
-class MyGame extends FlameGame with TapDetector, HasCollisionDetection {
+class MyGame extends FlameGame with HasCollisionDetection, PanDetector {
   MyGame({
     required this.onGameOver,
     required this.onScoreUpdate,
@@ -17,14 +16,15 @@ class MyGame extends FlameGame with TapDetector, HasCollisionDetection {
   final void Function(int) onScoreUpdate;
   final void Function(int) onPoisonHit;
 
-  late final MyPlayer player;
   final random = Random();
 
-  bool _isGameOver = false;
+  final bool _isGameOver = false;
 
   int score = 0;
 
   int poisonHitCount = 0;
+
+  late final Alien _alien;
 
   @override
   Color backgroundColor() {
@@ -35,83 +35,33 @@ class MyGame extends FlameGame with TapDetector, HasCollisionDetection {
   Future<void>? onLoad() async {
     await super.onLoad();
 
-    player = MyPlayer()
-      ..width = 100
-      ..height = 100;
-    add(player);
+    add(ScreenHitbox());
 
-    for (var i = 0; i < 30; i++) {
-      _createNewCircle();
-    }
-    _keepAddingCircles();
-    _keepAddingPoisonCircles();
+    _alien = Alien()
+      ..width = 70
+      ..height = 70
+      ..position = size / 2;
+    add(_alien);
+  }
+
+  late Vector2 _initialPanPosition;
+  late Vector2 _draggedDelta;
+
+  @override
+  void onPanStart(DragStartInfo info) {
+    _initialPanPosition = info.eventPosition.game;
+    super.onPanStart(info);
   }
 
   @override
-  void onTap() {
-    player.jump();
-    super.onTap();
+  void onPanUpdate(DragUpdateInfo info) {
+    _draggedDelta = info.eventPosition.game - _initialPanPosition;
+    super.onPanUpdate(info);
   }
 
   @override
-  void update(double dt) {
-    super.update(dt);
-    if (_isGameOver) {
-      return;
-    }
-    for (final child in children) {
-      if (child is PoinsonCircle) {
-        if (child.hasBeenEaten) {
-          poisonHitCount++;
-          onPoisonHit(poisonHitCount);
-          if (poisonHitCount >= poisonHitCountToLose) {
-            _isGameOver = true;
-            onGameOver();
-          }
-        }
-      } else if (child is CircleComponent) {
-        if (child.hasBeenEaten) {
-          score++;
-          onScoreUpdate(score);
-        }
-      }
-    }
-  }
-
-  void reset() {
-    _isGameOver = false;
-    score = 0;
-    poisonHitCount = 0;
-    for (final child in children) {
-      if (child is MyPlayer) {
-        child.position = child.initialPosition;
-      } else if (child is CircleComponent) {
-        child.removeFromParent();
-      }
-    }
-  }
-
-  void _createNewCircle([bool isPoison = false]) async {
-    final randomX = random.nextDouble() * size.x * 5 + size.x;
-    final randomY = random.nextDouble() * size.y;
-    add(
-      (isPoison ? PoinsonCircle() : CircleComponent())
-        ..width = 30
-        ..height = 30
-        ..x = randomX
-        ..y = randomY,
-    );
-  }
-
-  Future<void> _keepAddingCircles() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    _createNewCircle();
-    _keepAddingCircles();
-  }
-
-  Future<void> _keepAddingPoisonCircles() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
-    _createNewCircle(true);
-    _keepAddingPoisonCircles();
+  void onPanEnd(DragEndInfo info) {
+    _alien.release(-_draggedDelta * 2);
+    super.onPanEnd(info);
   }
 }

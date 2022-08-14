@@ -56,9 +56,6 @@ class _HomePageState extends State<HomePage> {
           actions: [
             TextButton(
                 onPressed: () {
-                  setState(() {
-                    game.reset();
-                  });
                   Navigator.of(context).pop();
                 },
                 child: const Text('Retry'))
