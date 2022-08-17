@@ -9,22 +9,19 @@ import 'package:multiplayer/game/alien.dart';
 class MyGame extends FlameGame with HasCollisionDetection, PanDetector {
   MyGame({
     required this.onGameOver,
-    required this.onScoreUpdate,
-    required this.onPoisonHit,
+    required this.aliens,
   });
   final void Function() onGameOver;
-  final void Function(int) onScoreUpdate;
-  final void Function(int) onPoisonHit;
+
+  final List<Alien> aliens;
 
   final random = Random();
-
-  final bool _isGameOver = false;
 
   int score = 0;
 
   int poisonHitCount = 0;
 
-  late final Alien _alien;
+  late final Alien _myAlien;
 
   @override
   Color backgroundColor() {
@@ -37,11 +34,8 @@ class MyGame extends FlameGame with HasCollisionDetection, PanDetector {
 
     add(ScreenHitbox());
 
-    _alien = Alien()
-      ..width = 70
-      ..height = 70
-      ..position = size / 2;
-    add(_alien);
+    _myAlien = aliens[0];
+    addAll(aliens);
   }
 
   late Vector2 _initialPanPosition;
@@ -61,7 +55,7 @@ class MyGame extends FlameGame with HasCollisionDetection, PanDetector {
 
   @override
   void onPanEnd(DragEndInfo info) {
-    _alien.release(-_draggedDelta * 2);
+    _myAlien.release(-_draggedDelta * 3);
     super.onPanEnd(info);
   }
 }
