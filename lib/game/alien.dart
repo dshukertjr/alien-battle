@@ -1,124 +1,19 @@
+import 'dart:async';
+
 import 'package:flame/flame.dart';
 import 'package:flame/widgets.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/material.dart';
 import 'package:multiplayer/utils/constants.dart';
 
-// class Alien extends PositionComponent with HasGameRef, CollisionCallbacks {
-//   final int playerIndex;
-//   Alien({
-//     required this.isMine,
-//     required this.playerIndex,
-//     required this.onHpChange,
-//   });
-
-//   final void Function() onHpChange;
-//   final bool isMine;
-
-//   static const _receiveDamageDuration = Duration(milliseconds: 300);
-
-//   String get getImagePath {
-//     return 'alien$playerIndex.png';
-//   }
-
-//   Vector2 velocity = Vector2.zero();
-
-//   /// How fast the velocity decreases per second
-//   static const _deceleration = -150.0;
-
-//   late final Sprite sprite;
-
-//   bool isAttacking = false;
-//   double healthPoints = initialHealthPoints;
-
-//   /// `true` when receiving damage.
-//   /// Won't receive any damage while true.
-//   /// Will turn false after _receiveDamageDuration
-//   bool receivingDamage = false;
-
-//   @override
-//   Future<void>? onLoad() async {
-//     await super.onLoad();
-//     final image = await Flame.images.load(getImagePath);
-
-//     width = 70;
-//     height = 70;
-
-//     sprite = Sprite(image);
-
-//     anchor = Anchor.topLeft;
-
-//     add(CircleHitbox(anchor: Anchor.center));
-//   }
-
-//   @override
-//   void render(Canvas canvas) {
-//     super.render(canvas);
-//     sprite.render(canvas,
-//         size: size, position: Vector2.zero(), anchor: Anchor.center);
-//   }
-
-//   @override
-//   void update(double dt) {
-//     super.update(dt);
-//     position += velocity * dt;
-//     final unit = velocity.normalized();
-//     velocity += unit * _deceleration * dt;
-//     if (velocity.length < 1) {
-//       velocity.setZero();
-//       isAttacking = false;
-//     }
-//   }
-
-//   @override
-//   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
-//     super.onCollision(intersectionPoints, other);
-//     if (other is ScreenHitbox) {
-//       final reflectionVector =
-//           intersectionPoints.first.x == intersectionPoints.last.x
-//               ? Vector2(1, 0)
-//               : Vector2(0, 1);
-//       velocity.reflect(reflectionVector);
-//     } else if (other is Alien) {
-//       if (velocity.isZero() && other.velocity.isZero()) {
-//         return;
-//       }
-//       // final isAttacker = velocity.length > other.velocity.length;
-//       // if (isAttacker) {
-//       // } else {
-//       //   if (!receivingDamage &&
-//       //       other.isAttacking &&
-//       //       other.velocity.length > 10) {
-//       //     receivingDamage = true;
-//       //     healthPoints -= 40;
-//       //     if (healthPoints <= 0) {
-//       //       removeFromParent();
-//       //     }
-//       //     onHpChange();
-//       //     Future.delayed(_receiveDamageDuration)
-//       //         .then((value) => receivingDamage = false);
-//       //   }
-
-//       // final velocityMagnitude = (other.velocity.x - other.velocity.y) /
-//       //     (reflectionVector.x - reflectionVector.y);
-//       // velocity = reflectionVector * velocityMagnitude;
-//       // }
-//     }
-//   }
-
-//   /// Released the alien to move in certain direction
-//   void release(Vector2 releaseVelocity) {
-//     velocity = releaseVelocity;
-//     isAttacking = true;
-//   }
-// }
-
 class Alien extends BodyComponent with ContactCallbacks {
-  double healthPoints = initialHealthPoints;
-
   final bool isMine;
   final int playerIndex;
   final void Function() onHpChange;
+
+  late final Sprite sprite;
+  double healthPoints = initialHealthPoints;
+  bool isAttacking = false;
 
   Alien({
     required this.isMine,
@@ -131,8 +26,6 @@ class Alien extends BodyComponent with ContactCallbacks {
   String get getImagePath {
     return 'alien$playerIndex.png';
   }
-
-  late final Sprite sprite;
 
   @override
   Future<void> onLoad() async {
@@ -200,22 +93,26 @@ class Alien extends BodyComponent with ContactCallbacks {
   }
 
   @override
-  void beginContact(Object other, Contact contact) {
-    super.beginContact(other, contact);
-    if (other is Alien) {
-      print('here');
+  void endContact(Object other, Contact contact) {
+    super.endContact(other, contact);
+    if (other is Alien && other.isAttacking) {
+      healthPoints -= 10;
+      if (healthPoints <= 0) {
+        removeFromParent();
+      }
+      onHpChange();
     }
   }
 
   @override
   void renderCircle(Canvas c, Offset center, double radius) {
     super.renderCircle(c, center, radius);
-    // final lineRotation = Offset(0, radius);
-    // c.drawLine(center, center + lineRotation, _blue);
   }
 
   /// Released the alien to move in certain direction
   void release(Vector2 releaseVelocity) {
     body.linearVelocity = releaseVelocity.normalized() * 100;
+    isAttacking = true;
+    Future.delayed(const Duration(seconds: 1)).then((_) => isAttacking = false);
   }
 }
