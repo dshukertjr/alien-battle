@@ -1,4 +1,5 @@
-import 'package:flame/palette.dart';
+import 'package:flame/flame.dart';
+import 'package:flame/widgets.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/material.dart';
 import 'package:multiplayer/utils/constants.dart';
@@ -113,12 +114,8 @@ import 'package:multiplayer/utils/constants.dart';
 // }
 
 class Alien extends BodyComponent with ContactCallbacks {
-  late Paint originalPaint;
-  final bool _giveNudge = false;
-
   double healthPoints = initialHealthPoints;
 
-  final Paint _blue = BasicPalette.blue.paint();
   final bool isMine;
   final int playerIndex;
   final void Function() onHpChange;
@@ -128,28 +125,32 @@ class Alien extends BodyComponent with ContactCallbacks {
     required this.playerIndex,
     required this.onHpChange,
   }) {
-    originalPaint = randomPaint();
-    paint = originalPaint;
+    paint = Paint()..color = Colors.transparent;
   }
 
   String get getImagePath {
     return 'alien$playerIndex.png';
   }
 
-  Paint randomPaint() => PaintExtension.random(withAlpha: 0.9, base: 100);
+  late final Sprite sprite;
 
-  // @override
-  // Future<void>? onLoad() async {
-  //   super.onLoad();
-  //   final image = await Flame.images.load(getImagePath);
+  @override
+  Future<void> onLoad() async {
+    super.onLoad();
+    final image = await Flame.images.load(getImagePath);
 
-  //   width = 70;
-  //   height = 70;
+    sprite = Sprite(image);
+  }
 
-  //   position = _position;
-
-  //   sprite = Sprite(image);
-  // }
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    sprite.render(
+      canvas,
+      size: Vector2(6, 6),
+      anchor: Anchor.center,
+    );
+  }
 
   Vector2 get _getInitialPosition {
     final sixthOfField = gameRef.size.x / 6;
@@ -209,8 +210,8 @@ class Alien extends BodyComponent with ContactCallbacks {
   @override
   void renderCircle(Canvas c, Offset center, double radius) {
     super.renderCircle(c, center, radius);
-    final lineRotation = Offset(0, radius);
-    c.drawLine(center, center + lineRotation, _blue);
+    // final lineRotation = Offset(0, radius);
+    // c.drawLine(center, center + lineRotation, _blue);
   }
 
   /// Released the alien to move in certain direction
