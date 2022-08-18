@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
-import 'package:flame/widgets.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/material.dart';
 import 'package:multiplayer/utils/constants.dart';
@@ -31,18 +31,25 @@ class Alien extends BodyComponent with ContactCallbacks {
   Future<void> onLoad() async {
     super.onLoad();
     final image = await Flame.images.load(getImagePath);
-
+    if (isMine) {
+      add(MyAlienCircle());
+    }
     sprite = Sprite(image);
+    add(SpriteComponent(
+      sprite: sprite,
+      size: Vector2(6, 6),
+      anchor: Anchor.center,
+    ));
   }
 
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    sprite.render(
-      canvas,
-      size: Vector2(6, 6),
-      anchor: Anchor.center,
-    );
+    // sprite.render(
+    //   canvas,
+    // size: Vector2(6, 6),
+    // anchor: Anchor.center,
+    // );
   }
 
   Vector2 get _getInitialPosition {
@@ -105,14 +112,39 @@ class Alien extends BodyComponent with ContactCallbacks {
   }
 
   @override
-  void renderCircle(Canvas c, Offset center, double radius) {
-    super.renderCircle(c, center, radius);
+  void renderCircle(Canvas canvas, Offset center, double radius) {
+    super.renderCircle(canvas, center, radius);
   }
 
   /// Released the alien to move in certain direction
   void release(Vector2 releaseVelocity) {
-    body.linearVelocity = releaseVelocity.normalized() * 100;
+    body.linearVelocity = releaseVelocity;
     isAttacking = true;
-    Future.delayed(const Duration(seconds: 1)).then((_) => isAttacking = false);
+    // add(Some());
+    Future.delayed(const Duration(seconds: 2)).then((_) => isAttacking = false);
+  }
+}
+
+class MyAlienCircle extends PositionComponent {
+  static const strokeWidth = 0.5;
+  static const _radius = 3.25;
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke; //important set stroke style
+
+    final path = Path()
+      ..moveTo(strokeWidth, strokeWidth)
+      ..addOval(Rect.fromCircle(
+        center: const Offset(0, 0),
+        radius: _radius,
+      ));
+
+    canvas.drawPath(path, paint);
   }
 }
