@@ -40,26 +40,32 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _aliens = [
       Alien(
+        isMine: true,
         playerIndex: 0,
         onHpChange: () => setState(() {}),
       ),
       Alien(
+        isMine: false,
         playerIndex: 1,
         onHpChange: () => setState(() {}),
       ),
       Alien(
+        isMine: false,
         playerIndex: 2,
         onHpChange: () => setState(() {}),
       ),
       Alien(
+        isMine: false,
         playerIndex: 3,
         onHpChange: () => setState(() {}),
       ),
       Alien(
+        isMine: false,
         playerIndex: 4,
         onHpChange: () => setState(() {}),
       ),
       Alien(
+        isMine: false,
         playerIndex: 5,
         onHpChange: () => setState(() {}),
       ),

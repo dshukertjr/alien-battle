@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
@@ -9,13 +7,15 @@ import 'package:multiplayer/utils/constants.dart';
 class Alien extends PositionComponent with HasGameRef, CollisionCallbacks {
   final int playerIndex;
   Alien({
+    required this.isMine,
     required this.playerIndex,
     required this.onHpChange,
   });
 
   final void Function() onHpChange;
+  final bool isMine;
 
-  static const _receiveDamageDuration = Duration(seconds: 1);
+  static const _receiveDamageDuration = Duration(milliseconds: 300);
 
   String get getImagePath {
     return 'alien$playerIndex.png';
@@ -28,15 +28,8 @@ class Alien extends PositionComponent with HasGameRef, CollisionCallbacks {
 
   late final Sprite sprite;
 
-  bool hasLost = false;
-  bool moving = false;
+  bool isAttacking = false;
   double healthPoints = initialHealthPoints;
-
-  /// Random string generated when user releases the alien
-  String? currentInteractionId;
-
-  /// Contains all the interaction id that this alien has interacted with
-  final List<String> _interactedIds = [];
 
   /// `true` when receiving damage.
   /// Won't receive any damage while true.
@@ -54,9 +47,28 @@ class Alien extends PositionComponent with HasGameRef, CollisionCallbacks {
     sprite = Sprite(image);
 
     anchor = Anchor.topLeft;
-    final random = Random();
-    position = Vector2(random.nextDouble() * gameRef.size.x,
-        random.nextDouble() * gameRef.size.y);
+
+    final sixthOfField = gameRef.size.x / 6;
+    switch (playerIndex) {
+      case 0:
+        position = Vector2(sixthOfField * 1, sixthOfField);
+        break;
+      case 1:
+        position = Vector2(sixthOfField * 5, sixthOfField);
+        break;
+      case 2:
+        position = Vector2(sixthOfField * 1, sixthOfField * 5);
+        break;
+      case 3:
+        position = Vector2(sixthOfField * 5, sixthOfField * 5);
+        break;
+      case 4:
+        position = Vector2(sixthOfField * 2, sixthOfField * 3);
+        break;
+      case 5:
+        position = Vector2(sixthOfField * 4, sixthOfField * 3);
+        break;
+    }
 
     add(CircleHitbox(anchor: Anchor.center));
   }
@@ -72,9 +84,11 @@ class Alien extends PositionComponent with HasGameRef, CollisionCallbacks {
   void update(double dt) {
     super.update(dt);
     position += velocity * dt;
-    velocity += velocity.normalized() * _deceleration * dt;
-    if (velocity.isZero()) {
-      moving = false;
+    final unit = velocity.normalized();
+    velocity += unit * _deceleration * dt;
+    if (velocity.length < 1) {
+      velocity.setZero();
+      isAttacking = false;
     }
   }
 
@@ -88,50 +102,64 @@ class Alien extends PositionComponent with HasGameRef, CollisionCallbacks {
               : Vector2(0, 1);
       velocity.reflect(reflectionVector);
     } else if (other is Alien) {
-      final interactionId = other.currentInteractionId;
-      if (interactionId == null || _interactedIds.contains(interactionId)) {
+      if (velocity.isZero() && other.velocity.isZero()) {
         return;
       }
-      _interactedIds.add(interactionId);
-      if (moving) {
-        velocity = velocity * 0.9;
-      } else {
-        if (!other.moving) {
-          return;
-        }
-        if (!receivingDamage) {
-          receivingDamage = true;
-          healthPoints -= 40;
-          if (healthPoints <= 0) {
-            hasLost = true;
-            removeFromParent();
-          }
-          onHpChange();
-          Future.delayed(_receiveDamageDuration)
-              .then((value) => receivingDamage = false);
-        }
+      final reflectionVector =
+          (intersectionPoints.first - intersectionPoints.last).normalized();
 
-        final targetX = (other.position.y -
-                position.y -
-                other.position.x * other.velocity.y / other.velocity.x +
-                other.velocity.x * position.x / other.velocity.y) *
-            (other.velocity.x *
-                other.velocity.y /
-                (other.velocity.x * other.velocity.x -
-                    other.velocity.y * other.velocity.y));
-        final targetY = other.position.y +
-            (targetX - other.position.x) * other.velocity.y / other.velocity.x;
-        final moveAwayVector =
-            -(Vector2(targetX, targetY) - position).normalized();
-        velocity += moveAwayVector * 100;
+      if (other.velocity.isZero()) {
+        final velocityMagnitude = (other.velocity.x - other.velocity.y) /
+            (reflectionVector.x - reflectionVector.y);
+        final velocityOutMagnitude =
+            other.velocity.x - velocityMagnitude * reflectionVector.x;
+        velocity = velocity.normalized().reflected(reflectionVector) *
+            velocityOutMagnitude;
+      } else if (velocity.isZero()) {
+        final velocityMagnitude = (other.velocity.x - other.velocity.y) /
+            (reflectionVector.x - reflectionVector.y);
+        // final velocityOutMagnitude =
+        //     other.velocity.x - velocityMagnitude * reflectionVector.x;
+        velocity = reflectionVector.normalized() * velocityMagnitude;
+      } else {
+        // final n1 = velocity.reflected(reflectionVector).normalized();
+        // final n2 = other.velocity.reflected(reflectionVector).normalized();
+
+        // final velocityMagnitude = (n2.x * (velocity.y + other.velocity.y) -
+        //         n2.y * (velocity.x + other.velocity.x)) /
+        //     (n2.x + n1.y - n1.x * n2.y);
+        // final otherVelocityMagnitude =
+        //     (velocity.x + other.velocity.x - n1.x * velocityMagnitude) / n2.x;
+        // velocity = velocity.reflected(reflectionVector).normalized() *
+        //     velocityMagnitude;
       }
+
+      // final isAttacker = velocity.length > other.velocity.length;
+      // if (isAttacker) {
+      // } else {
+      //   if (!receivingDamage &&
+      //       other.isAttacking &&
+      //       other.velocity.length > 10) {
+      //     receivingDamage = true;
+      //     healthPoints -= 40;
+      //     if (healthPoints <= 0) {
+      //       removeFromParent();
+      //     }
+      //     onHpChange();
+      //     Future.delayed(_receiveDamageDuration)
+      //         .then((value) => receivingDamage = false);
+      //   }
+
+      // final velocityMagnitude = (other.velocity.x - other.velocity.y) /
+      //     (reflectionVector.x - reflectionVector.y);
+      // velocity = reflectionVector * velocityMagnitude;
+      // }
     }
   }
 
   /// Released the alien to move in certain direction
   void release(Vector2 releaseVelocity) {
     velocity = releaseVelocity;
-    moving = true;
-    currentInteractionId = generateRandomString();
+    isAttacking = true;
   }
 }
