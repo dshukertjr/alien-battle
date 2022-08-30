@@ -4,7 +4,7 @@ import 'package:flame/components.dart';
 import 'package:flame/input.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/material.dart';
-import 'package:multiplayer/game/alien.dart';
+import 'package:alienbattle/game/alien.dart';
 
 class MyGame extends Forge2DGame with HasCollisionDetection, PanDetector {
   MyGame({

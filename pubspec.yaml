@@ -1,4 +1,4 @@
-name: multiplayer
+name: alienbattle
 description: A new Flutter project.
 
 publish_to: 'none'
@@ -14,6 +14,8 @@ dependencies:
 
   flame: ^1.2.1
   flame_forge2d: ^0.12.1
+  realtime_client:
+    path: ../realtime-dart
 
 dev_dependencies:
   flutter_test:
