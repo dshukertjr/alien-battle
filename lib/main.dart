@@ -1,11 +1,9 @@
-import 'dart:math';
-
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import 'package:alienbattle/game/alien.dart';
 import 'package:alienbattle/game/game.dart';
 import 'package:alienbattle/utils/constants.dart';
 import 'package:realtime_client/realtime_client.dart';
+import 'package:uuid/uuid.dart';
 
 void main() {
   runApp(const MyApp());
@@ -35,8 +33,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  late final MyGame game;
-  late final List<Alien> _aliens;
+  AlienBattleGame? _game;
 
   late final RealtimeClient _client;
 
@@ -46,7 +43,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   late final String _myUserId;
 
-  bool _isInLoggy = true;
+  bool _isInLobby = true;
 
   Map<String, Player> _lobbyPlayers = {};
 
@@ -54,7 +51,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
 
-    _myUserId = _generateRandomString();
+    _myUserId = _generateUuid();
 
     _client = RealtimeClient(
         'ws://nlbsnpoablmsxwkdbmer.supabase.co/realtime/v1',
@@ -71,92 +68,102 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ));
 
     _lobbyChannel
-        .on(RealtimeListenTypes.broadcast, ChannelFilter(event: 'location'),
+        .on(RealtimeListenTypes.broadcast, ChannelFilter(event: 'lobby'),
             (payload, [ref]) {
-      print(payload);
+      final roomId = payload['roomId'];
+      if (roomId is String) {
+        _joinGameRoom(roomId);
+      }
     });
 
     _lobbyChannel.on(RealtimeListenTypes.presence, ChannelFilter(event: 'sync'),
         (payload, [ref]) {
       final presenceState = _lobbyChannel.presenceState();
       setState(() {
-        _lobbyPlayers = Map.fromEntries(presenceState.entries.map((entry) =>
-            MapEntry(
-                entry.value.first.payload['user_id'] as String,
-                Player(
-                    userId: entry.value.first.payload['user_id'] as String))));
+        _lobbyPlayers = Map.fromEntries(
+          presenceState.entries
+              .where((entry) => entry.value.first.payload['user_id'] != null)
+              .map(
+                (entry) => MapEntry(
+                  entry.value.first.payload['user_id'] as String,
+                  Player(
+                      userId: entry.value.first.payload['user_id'] as String),
+                ),
+              ),
+        );
       });
     });
 
     _lobbyChannel.subscribe((status, [_]) async {
       if (status == 'SUBSCRIBED') {
-        final status = await _lobbyChannel.track({'user_id': _myUserId});
-        print(status);
+        await _lobbyChannel.track({'user_id': _myUserId});
       }
     });
-
-    _aliens = [
-      Alien(
-        isMine: true,
-        playerIndex: 0,
-        onHpChange: () => setState(() {}),
-      ),
-      Alien(
-        isMine: false,
-        playerIndex: 1,
-        onHpChange: () => setState(() {}),
-      ),
-      Alien(
-        isMine: false,
-        playerIndex: 2,
-        onHpChange: () => setState(() {}),
-      ),
-      Alien(
-        isMine: false,
-        playerIndex: 3,
-        onHpChange: () => setState(() {}),
-      ),
-      Alien(
-        isMine: false,
-        playerIndex: 4,
-        onHpChange: () => setState(() {}),
-      ),
-      Alien(
-        isMine: false,
-        playerIndex: 5,
-        onHpChange: () => setState(() {}),
-      ),
-    ];
-    game = MyGame(
-      aliens: _aliens,
-      onGameOver: _onGameOver,
-    );
   }
 
-  String _generateRandomString() {
-    var r = Random();
-    const chars =
-        'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890';
-    return List.generate(24, (index) => chars[r.nextInt(chars.length)]).join();
+  String _generateUuid() {
+    return const Uuid().v4();
   }
 
-  Future<void> _onGameOver() {
+  Future<void> _onGameOver(bool didWin) {
     return showDialog(
       barrierDismissible: false,
       context: context,
       builder: ((context) {
         return AlertDialog(
-          title: const Text('Game Over'),
+          title: Text(didWin ? 'You Won 🎉' : 'You Lost 😭'),
           actions: [
             TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Retry'))
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  _isInLobby = true;
+                });
+              },
+              child: const Text('Back to Lobby'),
+            )
           ],
         );
       }),
     );
+  }
+
+  Future<void> _joinGameRoom(String roomId) async {
+    // Remove self from presence
+    await _lobbyChannel.track({});
+    _roomChannel = _client.channel(roomId);
+    _roomChannel.on(RealtimeListenTypes.broadcast, ChannelFilter(event: roomId),
+        (payload, [ref]) {
+      // get release velocity and release it here
+      final Map<String, dynamic> velocity = payload['velocity'];
+      final x = velocity['x'] as double;
+      final y = velocity['y'] as double;
+      final userId = payload['user_id'] as String;
+      final releaseVelocity = Vector2(x, y);
+      _game?.releaseAlien(userId: userId, releaseVelocity: releaseVelocity);
+    }).subscribe();
+
+    _game = AlienBattleGame(
+      onGameOver: _onGameOver,
+      myUserId: _myUserId,
+      players: _lobbyPlayers.values.toList(),
+      onGameStateUpdated: () {
+        setState(() {});
+      },
+      onRelease: (releaseVelocity) {
+        _roomChannel.send(type: RealtimeListenTypes.broadcast, payload: {
+          'userId': _myUserId,
+          'velocity': {
+            'x': releaseVelocity.x,
+            'y': releaseVelocity.y,
+          }
+        });
+      },
+    );
+
+    setState(() {
+      _isInLobby = false;
+    });
   }
 
   @override
@@ -169,16 +176,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             'assets/images/background.jpg',
             fit: BoxFit.cover,
           ),
-          _isInLoggy
+          _isInLobby
               ? Lobby(
                   lobbyPlayerCount: _lobbyPlayers.length,
                   onStartGame: () {
-                    setState(() {
-                      _isInLoggy = false;
-                    });
+                    final roomId = _generateUuid();
+                    _lobbyChannel.send(
+                        type: RealtimeListenTypes.broadcast,
+                        payload: {'roomId': roomId});
+                    _joinGameRoom(roomId);
                   },
                 )
-              : InGame(game: game, aliens: _aliens),
+              : InGame(game: _game!),
         ],
       ),
     );
@@ -254,12 +263,9 @@ class InGame extends StatelessWidget {
   const InGame({
     Key? key,
     required this.game,
-    required List<Alien> aliens,
-  })  : _aliens = aliens,
-        super(key: key);
+  }) : super(key: key);
 
-  final MyGame game;
-  final List<Alien> _aliens;
+  final AlienBattleGame game;
 
   @override
   Widget build(BuildContext context) {
@@ -274,7 +280,7 @@ class InGame extends StatelessWidget {
           ),
           Wrap(
             alignment: WrapAlignment.spaceAround,
-            children: _aliens.map<Widget>((alien) {
+            children: game.aliens.map<Widget>((alien) {
               final hasAlienLost = alien.healthPoints <= 0;
               return ConstrainedBox(
                 constraints: const BoxConstraints(

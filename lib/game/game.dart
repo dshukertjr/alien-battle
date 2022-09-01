@@ -1,21 +1,30 @@
-import 'dart:math';
-
+import 'package:alienbattle/main.dart';
 import 'package:flame/components.dart';
 import 'package:flame/input.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/material.dart';
 import 'package:alienbattle/game/alien.dart';
 
-class MyGame extends Forge2DGame with HasCollisionDetection, PanDetector {
-  MyGame({
+class AlienBattleGame extends Forge2DGame
+    with HasCollisionDetection, PanDetector {
+  AlienBattleGame({
     required this.onGameOver,
-    required this.aliens,
-  }) : super(gravity: Vector2(0, 0), zoom: 10);
-  final void Function() onGameOver;
+    required this.onGameStateUpdated,
+    required this.onRelease,
+    required List<Player> players,
+    required String myUserId,
+  })  : _players = players,
+        _myUserId = myUserId,
+        super(gravity: Vector2(0, 0), zoom: 10);
 
-  final List<Alien> aliens;
+  final List<Alien> aliens = [];
+  final void Function(bool didWin) onGameOver;
+  final void Function() onGameStateUpdated;
+  final List<Player> _players;
+  final String _myUserId;
 
-  final random = Random();
+  /// Callback for when you release your alien
+  final void Function(Vector2) onRelease;
 
   int score = 0;
 
@@ -34,9 +43,13 @@ class MyGame extends Forge2DGame with HasCollisionDetection, PanDetector {
 
     add(ScreenHitbox());
 
+    startGame();
+
     _myAlien = aliens[0];
     addAll(aliens);
     addAll(_createBoundaries(this));
+
+    onGameStateUpdated();
   }
 
   late Vector2 _initialPanPosition;
@@ -46,7 +59,9 @@ class MyGame extends Forge2DGame with HasCollisionDetection, PanDetector {
   void onPanStart(DragStartInfo info) {
     super.onPanStart(info);
     _initialPanPosition = info.eventPosition.game;
-    _myAlien.arrowSprite?.setAlpha(255);
+    _myAlien.arrowSprite
+      ?..height = 0
+      ..setAlpha(255);
   }
 
   @override
@@ -61,7 +76,31 @@ class MyGame extends Forge2DGame with HasCollisionDetection, PanDetector {
   @override
   void onPanEnd(DragEndInfo info) {
     super.onPanEnd(info);
-    _myAlien.release(-_draggedDelta * 3);
+    final releaseVelocity = -_draggedDelta * 3;
+    _myAlien.release(releaseVelocity);
+
+    // broadcast the release velocity to other clients
+    onRelease(releaseVelocity);
+  }
+
+  void startGame() {
+    aliens.addAll(
+      _players.asMap().entries.map((entry) => Alien(
+            isMine: _myUserId == entry.value.userId,
+            positionIndex: entry.key,
+            onHpChanged: onGameStateUpdated,
+            userId: entry.value.userId,
+          )),
+    );
+  }
+
+  void releaseAlien({
+    required String userId,
+    required Vector2 releaseVelocity,
+  }) {
+    aliens
+        .singleWhere((alien) => alien.userId == userId)
+        .release(releaseVelocity);
   }
 }
 

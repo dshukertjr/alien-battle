@@ -5,11 +5,14 @@ import 'package:flame/flame.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/material.dart';
 import 'package:alienbattle/utils/constants.dart';
+import 'package:vibration/vibration.dart';
 
 class Alien extends BodyComponent with ContactCallbacks {
   final bool isMine;
-  final int playerIndex;
-  final void Function() onHpChange;
+  final int positionIndex;
+  final void Function() onHpChanged;
+
+  final String userId;
 
   late final SpriteComponent? arrowSprite;
 
@@ -19,14 +22,15 @@ class Alien extends BodyComponent with ContactCallbacks {
 
   Alien({
     required this.isMine,
-    required this.playerIndex,
-    required this.onHpChange,
+    required this.positionIndex,
+    required this.onHpChanged,
+    required this.userId,
   }) {
     paint = Paint()..color = Colors.transparent;
   }
 
   String get getImagePath {
-    return 'alien$playerIndex.png';
+    return 'alien$positionIndex.png';
   }
 
   @override
@@ -52,30 +56,20 @@ class Alien extends BodyComponent with ContactCallbacks {
     ));
   }
 
-  @override
-  void render(Canvas canvas) {
-    super.render(canvas);
-    // sprite.render(
-    //   canvas,
-    // size: Vector2(6, 6),
-    // anchor: Anchor.center,
-    // );
-  }
-
   Vector2 get _getInitialPosition {
     final sixthOfField = gameRef.size.x / 6;
-    switch (playerIndex) {
+    switch (positionIndex) {
       case 0:
         return Vector2(sixthOfField * 1, sixthOfField);
 
       case 1:
-        return Vector2(sixthOfField * 5, sixthOfField);
+        return Vector2(sixthOfField * 5, sixthOfField * 5);
 
       case 2:
         return Vector2(sixthOfField * 1, sixthOfField * 5);
 
       case 3:
-        return Vector2(sixthOfField * 5, sixthOfField * 5);
+        return Vector2(sixthOfField * 5, sixthOfField);
 
       case 4:
         return Vector2(sixthOfField * 2, sixthOfField * 3);
@@ -117,7 +111,10 @@ class Alien extends BodyComponent with ContactCallbacks {
       if (healthPoints <= 0) {
         removeFromParent();
       }
-      onHpChange();
+      if (isMine) {
+        Vibration.vibrate(duration: 100);
+      }
+      onHpChanged();
     }
   }
 
@@ -131,7 +128,7 @@ class Alien extends BodyComponent with ContactCallbacks {
     arrowSprite?.setAlpha(0);
     body.linearVelocity = releaseVelocity;
     isAttacking = true;
-    // add(Some());
+
     Future.delayed(const Duration(seconds: 2)).then((_) => isAttacking = false);
   }
 }
