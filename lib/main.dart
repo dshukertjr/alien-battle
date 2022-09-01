@@ -46,9 +46,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   late final String _myUserId;
 
-  final bool _isInLoggy = true;
+  bool _isInLoggy = true;
 
-  final List<Player> _lobbyPlayers = [];
+  Map<String, Player> _lobbyPlayers = {};
 
   @override
   void initState() {
@@ -70,12 +70,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           self: true,
         ));
 
-    _lobbyChannel.on(RealtimeListenTypes.postgresChanges,
-        ChannelFilter(event: 'INSERT', schema: 'public', table: 'random'),
-        (payload, [ref]) {
-      print(payload);
-    });
-
     _lobbyChannel
         .on(RealtimeListenTypes.broadcast, ChannelFilter(event: 'location'),
             (payload, [ref]) {
@@ -84,27 +78,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     _lobbyChannel.on(RealtimeListenTypes.presence, ChannelFilter(event: 'sync'),
         (payload, [ref]) {
-      print('🎉 presene sync');
-      print(payload);
-      print(_lobbyChannel.presenceState());
       final presenceState = _lobbyChannel.presenceState();
-      if (presenceState.isNotEmpty) {
-        print(presenceState);
-      }
-    }).on(RealtimeListenTypes.presence, ChannelFilter(event: 'join'), (payload,
-        [ref]) {
-      print('🎉 presene join');
-      print(payload);
-      print(_lobbyChannel.presenceState());
-      final presenceState = _lobbyChannel.presenceState();
-      print(presenceState);
-    }).on(RealtimeListenTypes.presence, ChannelFilter(event: 'leave'), (payload,
-        [ref]) {
-      print('🎉 presene leave');
-      print(payload);
-      print(_lobbyChannel.presenceState());
-      final presenceState = _lobbyChannel.presenceState();
-      print(presenceState);
+      setState(() {
+        _lobbyPlayers = Map.fromEntries(presenceState.entries.map((entry) =>
+            MapEntry(
+                entry.value.first.payload['user_id'] as String,
+                Player(
+                    userId: entry.value.first.payload['user_id'] as String))));
+      });
     });
 
     _lobbyChannel.subscribe((status, [_]) async {
@@ -181,20 +162,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            onPressed: () async {
-              final res = await _lobbyChannel.send(
-                  type: RealtimeListenTypes.broadcast,
-                  event: 'location',
-                  payload: {'something': 'craetive'});
-              print(res);
-            },
-            icon: const Icon(Icons.favorite),
-          )
-        ],
-      ),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -205,7 +172,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           _isInLoggy
               ? Lobby(
                   lobbyPlayerCount: _lobbyPlayers.length,
-                  onStartGame: () {},
+                  onStartGame: () {
+                    setState(() {
+                      _isInLoggy = false;
+                    });
+                  },
                 )
               : InGame(game: game, aliens: _aliens),
         ],
@@ -261,7 +232,7 @@ class Lobby extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: lobbyPlayerCount >= 2 ? onStartGame : null,
+                  onPressed: lobbyPlayerCount >= 1 ? onStartGame : null,
                   child: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 4.0),
                     child: Text(
