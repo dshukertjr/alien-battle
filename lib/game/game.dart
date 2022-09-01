@@ -46,16 +46,15 @@ class MyGame extends Forge2DGame with HasCollisionDetection, PanDetector {
   void onPanStart(DragStartInfo info) {
     super.onPanStart(info);
     _initialPanPosition = info.eventPosition.game;
-    _myAlien.arrowSprite.setAlpha(255);
+    _myAlien.arrowSprite?.setAlpha(255);
   }
 
   @override
   void onPanUpdate(DragUpdateInfo info) {
     super.onPanUpdate(info);
     _draggedDelta = info.eventPosition.game - _initialPanPosition;
-    print(_draggedDelta.length);
     _myAlien.arrowSprite
-      ..height = _draggedDelta.length * 24 / 30
+      ?..height = _draggedDelta.length * 24 / 30
       ..angle = _draggedDelta.screenAngle();
   }
 

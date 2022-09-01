@@ -11,7 +11,7 @@ class Alien extends BodyComponent with ContactCallbacks {
   final int playerIndex;
   final void Function() onHpChange;
 
-  late final SpriteComponent arrowSprite;
+  late final SpriteComponent? arrowSprite;
 
   late final Sprite sprite;
   double healthPoints = initialHealthPoints;
@@ -34,11 +34,13 @@ class Alien extends BodyComponent with ContactCallbacks {
     super.onLoad();
     final image = await Flame.images.load(getImagePath);
     final arrowImage = await Flame.images.load('arrow.png');
-    arrowSprite = SpriteComponent(sprite: Sprite(arrowImage))
-      ..width = 7
-      ..anchor = Anchor.center
-      ..setAlpha(0);
-    add(arrowSprite);
+    if (isMine) {
+      arrowSprite = SpriteComponent(sprite: Sprite(arrowImage))
+        ..width = 7
+        ..anchor = Anchor.center
+        ..setAlpha(0);
+      add(arrowSprite!);
+    }
     if (isMine) {
       add(MyAlienCircle());
     }
@@ -126,7 +128,7 @@ class Alien extends BodyComponent with ContactCallbacks {
 
   /// Released the alien to move in certain direction
   void release(Vector2 releaseVelocity) {
-    arrowSprite.setAlpha(0);
+    arrowSprite?.setAlpha(0);
     body.linearVelocity = releaseVelocity;
     isAttacking = true;
     // add(Some());
