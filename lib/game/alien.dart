@@ -15,6 +15,7 @@ class Alien extends BodyComponent with ContactCallbacks {
   final String userId;
 
   late final SpriteComponent? arrowSprite;
+  SpriteComponent? _fireSprite;
 
   late final Sprite sprite;
   double healthPoints = initialHealthPoints;
@@ -37,6 +38,14 @@ class Alien extends BodyComponent with ContactCallbacks {
   Future<void> onLoad() async {
     super.onLoad();
     final image = await Flame.images.load(getImagePath);
+    _fireSprite =
+        SpriteComponent(sprite: Sprite(await Flame.images.load('fire.png')))
+          ..width = 9
+          ..height = 9
+          ..anchor = Anchor.bottomCenter
+          ..position = Vector2(0, 3)
+          ..setAlpha(0);
+    add(_fireSprite!);
     final arrowImage = await Flame.images.load('arrow.png');
     if (isMine) {
       arrowSprite = SpriteComponent(sprite: Sprite(arrowImage))
@@ -129,7 +138,11 @@ class Alien extends BodyComponent with ContactCallbacks {
     body.linearVelocity = releaseVelocity;
     isAttacking = true;
 
-    Future.delayed(const Duration(seconds: 2)).then((_) => isAttacking = false);
+    _fireSprite?.setAlpha(255);
+    Future.delayed(const Duration(seconds: 2)).then((_) {
+      isAttacking = false;
+      _fireSprite?.setAlpha(0);
+    });
   }
 }
 
