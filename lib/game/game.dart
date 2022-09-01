@@ -10,7 +10,7 @@ class AlienBattleGame extends Forge2DGame
   AlienBattleGame({
     required this.onGameOver,
     required this.onGameStateUpdated,
-    required this.onRelease,
+    required this.onSelfRelease,
     required List<Player> players,
     required String myUserId,
   })  : _players = players,
@@ -24,7 +24,7 @@ class AlienBattleGame extends Forge2DGame
   final String _myUserId;
 
   /// Callback for when you release your alien
-  final void Function(Vector2) onRelease;
+  final void Function(Vector2) onSelfRelease;
 
   int score = 0;
 
@@ -43,10 +43,8 @@ class AlienBattleGame extends Forge2DGame
 
     add(ScreenHitbox());
 
-    startGame();
+    setupAliens();
 
-    _myAlien = aliens[0];
-    addAll(aliens);
     addAll(_createBoundaries(this));
 
     onGameStateUpdated();
@@ -80,18 +78,25 @@ class AlienBattleGame extends Forge2DGame
     _myAlien.release(releaseVelocity);
 
     // broadcast the release velocity to other clients
-    onRelease(releaseVelocity);
+    onSelfRelease(releaseVelocity);
   }
 
-  void startGame() {
-    aliens.addAll(
-      _players.asMap().entries.map((entry) => Alien(
-            isMine: _myUserId == entry.value.userId,
-            positionIndex: entry.key,
-            onHpChanged: onGameStateUpdated,
-            userId: entry.value.userId,
-          )),
-    );
+  void setupAliens() {
+    final aliens = _players
+        .asMap()
+        .entries
+        .map(
+          (entry) => Alien(
+              isMine: _myUserId == entry.value.userId,
+              positionIndex: entry.key,
+              onHpChanged: onGameStateUpdated,
+              userId: entry.value.userId,
+              characterType: entry.value.chracterType),
+        )
+        .toList();
+    _myAlien = aliens.singleWhere((alien) => alien.isMine);
+    this.aliens.addAll(aliens);
+    addAll(aliens);
   }
 
   void releaseAlien({

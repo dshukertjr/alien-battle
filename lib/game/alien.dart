@@ -10,6 +10,7 @@ import 'package:vibration/vibration.dart';
 class Alien extends BodyComponent with ContactCallbacks {
   final bool isMine;
   final int positionIndex;
+  final int characterType;
   final void Function() onHpChanged;
 
   final String userId;
@@ -25,13 +26,14 @@ class Alien extends BodyComponent with ContactCallbacks {
     required this.isMine,
     required this.positionIndex,
     required this.onHpChanged,
+    required this.characterType,
     required this.userId,
   }) {
     paint = Paint()..color = Colors.transparent;
   }
 
   String get getImagePath {
-    return 'alien$positionIndex.png';
+    return 'alien$characterType.png';
   }
 
   @override
@@ -134,7 +136,9 @@ class Alien extends BodyComponent with ContactCallbacks {
 
   /// Released the alien to move in certain direction
   void release(Vector2 releaseVelocity) {
-    arrowSprite?.setAlpha(0);
+    if (isMine) {
+      arrowSprite?.setAlpha(0);
+    }
     body.linearVelocity = releaseVelocity;
     isAttacking = true;
 

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:alienbattle/game/game.dart';
@@ -70,9 +72,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _lobbyChannel
         .on(RealtimeListenTypes.broadcast, ChannelFilter(event: 'lobby'),
             (payload, [ref]) {
-      final roomId = payload['roomId'];
-      if (roomId is String) {
-        _joinGameRoom(roomId);
+      if (_isInLobby) {
+        final roomId = payload['roomId'];
+        if (roomId is String) {
+          _joinGameRoom(roomId);
+        }
       }
     });
 
@@ -87,7 +91,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 (entry) => MapEntry(
                   entry.value.first.payload['user_id'] as String,
                   Player(
-                      userId: entry.value.first.payload['user_id'] as String),
+                    userId: entry.value.first.payload['user_id'] as String,
+                    chracterType:
+                        entry.value.first.payload['character_type'] as int,
+                  ),
                 ),
               ),
         );
@@ -96,7 +103,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     _lobbyChannel.subscribe((status, [_]) async {
       if (status == 'SUBSCRIBED') {
-        await _lobbyChannel.track({'user_id': _myUserId});
+        await _lobbyChannel.track({
+          'user_id': _myUserId,
+          'character_type': Random().nextInt(9),
+        });
       }
     });
   }
@@ -129,11 +139,38 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _joinGameRoom(String roomId) async {
+    final players = _lobbyPlayers.values.toList();
+
     // Remove self from presence
     await _lobbyChannel.track({});
+    await _lobbyChannel.unsubscribe();
+
     _roomChannel = _client.channel(roomId);
+
+    _game = AlienBattleGame(
+        onGameOver: _onGameOver,
+        myUserId: _myUserId,
+        players: players,
+        onGameStateUpdated: () {
+          setState(() {});
+        },
+        onSelfRelease: (releaseVelocity) {
+          _roomChannel.send(
+            type: RealtimeListenTypes.broadcast,
+            event: roomId,
+            payload: {
+              'user_id': _myUserId,
+              'velocity': {
+                'x': releaseVelocity.x,
+                'y': releaseVelocity.y,
+              }
+            },
+          );
+        });
+
     _roomChannel.on(RealtimeListenTypes.broadcast, ChannelFilter(event: roomId),
         (payload, [ref]) {
+      print(payload);
       // get release velocity and release it here
       final Map<String, dynamic> velocity = payload['velocity'];
       final x = velocity['x'] as double;
@@ -142,24 +179,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final releaseVelocity = Vector2(x, y);
       _game?.releaseAlien(userId: userId, releaseVelocity: releaseVelocity);
     }).subscribe();
-
-    _game = AlienBattleGame(
-      onGameOver: _onGameOver,
-      myUserId: _myUserId,
-      players: _lobbyPlayers.values.toList(),
-      onGameStateUpdated: () {
-        setState(() {});
-      },
-      onRelease: (releaseVelocity) {
-        _roomChannel.send(type: RealtimeListenTypes.broadcast, payload: {
-          'userId': _myUserId,
-          'velocity': {
-            'x': releaseVelocity.x,
-            'y': releaseVelocity.y,
-          }
-        });
-      },
-    );
 
     setState(() {
       _isInLobby = false;
@@ -178,11 +197,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
           _isInLobby
               ? Lobby(
-                  lobbyPlayerCount: _lobbyPlayers.length,
+                  lobbyPlayerCount: _lobbyPlayers.values.length,
                   onStartGame: () {
                     final roomId = _generateUuid();
                     _lobbyChannel.send(
                         type: RealtimeListenTypes.broadcast,
+                        event: 'lobby',
                         payload: {'roomId': roomId});
                     _joinGameRoom(roomId);
                   },
@@ -343,8 +363,10 @@ class InGame extends StatelessWidget {
 
 class Player {
   final String userId;
+  final int chracterType;
 
   Player({
     required this.userId,
+    required this.chracterType,
   });
 }
