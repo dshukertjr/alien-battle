@@ -5,7 +5,6 @@ import 'package:flame/flame.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/material.dart';
 import 'package:alienbattle/utils/constants.dart';
-import 'package:vibration/vibration.dart';
 
 class Alien extends BodyComponent with ContactCallbacks {
   final bool isMine;
@@ -21,6 +20,8 @@ class Alien extends BodyComponent with ContactCallbacks {
   late final Sprite sprite;
   double healthPoints = initialHealthPoints;
   bool isAttacking = false;
+
+  void Function()? onDamage;
 
   Alien({
     required this.isMine,
@@ -123,7 +124,7 @@ class Alien extends BodyComponent with ContactCallbacks {
         removeFromParent();
       }
       if (isMine) {
-        Vibration.vibrate(duration: 100);
+        onDamage?.call();
       }
       onHpChanged();
     }

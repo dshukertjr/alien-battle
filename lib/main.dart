@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flame/game.dart';
@@ -6,6 +7,7 @@ import 'package:alienbattle/game/game.dart';
 import 'package:alienbattle/utils/constants.dart';
 import 'package:realtime_client/realtime_client.dart';
 import 'package:uuid/uuid.dart';
+import 'package:vibration/vibration.dart';
 
 void main() {
   runApp(const MyApp());
@@ -279,13 +281,24 @@ class Lobby extends StatelessWidget {
   }
 }
 
-class InGame extends StatelessWidget {
+class InGame extends StatefulWidget {
   const InGame({
     Key? key,
     required this.game,
   }) : super(key: key);
 
   final AlienBattleGame game;
+
+  @override
+  State<InGame> createState() => _InGameState();
+}
+
+class _InGameState extends State<InGame> {
+  static const _turningRedDuration = Duration(milliseconds: 150);
+
+  Color _gameScreenColor = Colors.white24;
+
+  Timer? _damageEffectTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -296,11 +309,30 @@ class InGame extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: 1,
-            child: GameWidget(game: game),
+            child: AnimatedContainer(
+              duration: _turningRedDuration,
+              color: _gameScreenColor,
+              child: GameWidget(
+                  game: widget.game
+                    ..onDamage = () async {
+                      Vibration.vibrate(
+                          duration: _turningRedDuration.inMilliseconds);
+
+                      _damageEffectTimer?.cancel();
+                      setState(() {
+                        _gameScreenColor = Colors.red.withOpacity(0.4);
+                      });
+                      _damageEffectTimer = Timer(_turningRedDuration, () {
+                        setState(() {
+                          _gameScreenColor = Colors.white24;
+                        });
+                      });
+                    }),
+            ),
           ),
           Wrap(
             alignment: WrapAlignment.spaceAround,
-            children: game.aliens.map<Widget>((alien) {
+            children: widget.game.aliens.map<Widget>((alien) {
               final hasAlienLost = alien.healthPoints <= 0;
               return ConstrainedBox(
                 constraints: const BoxConstraints(

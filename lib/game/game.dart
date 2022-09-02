@@ -26,6 +26,8 @@ class AlienBattleGame extends Forge2DGame
   /// Callback for when you release your alien
   final void Function(Vector2) onSelfRelease;
 
+  void Function()? onDamage;
+
   int score = 0;
 
   int poisonHitCount = 0;
@@ -34,7 +36,7 @@ class AlienBattleGame extends Forge2DGame
 
   @override
   Color backgroundColor() {
-    return Colors.white24;
+    return Colors.transparent;
   }
 
   @override
@@ -94,7 +96,7 @@ class AlienBattleGame extends Forge2DGame
               characterType: entry.value.chracterType),
         )
         .toList();
-    _myAlien = aliens.singleWhere((alien) => alien.isMine);
+    _myAlien = aliens.singleWhere((alien) => alien.isMine)..onDamage = onDamage;
     this.aliens.addAll(aliens);
     addAll(aliens);
   }
