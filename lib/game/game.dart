@@ -80,7 +80,6 @@ class AlienBattleGame extends Forge2DGame
   void onPanEnd(DragEndInfo info) {
     super.onPanEnd(info);
     final releaseVelocity = -_draggedDelta * 3;
-    _myAlien.release(releaseVelocity);
 
     // broadcast the release velocity to other clients
     onSelfRelease(releaseVelocity);

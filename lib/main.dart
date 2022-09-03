@@ -143,13 +143,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _joinGameRoom(String roomId) async {
     final players = _lobbyPlayers.values.toList();
 
+    final width = MediaQuery.of(context).size.width;
+    final zoom = width / 400 * 10;
+
     // Remove self from presence
     await _lobbyChannel.untrack();
 
-    _roomChannel = _client.channel(roomId);
-
-    final width = MediaQuery.of(context).size.width;
-    final zoom = width / 400 * 10;
+    _roomChannel = _client.channel(
+        roomId,
+        const RealtimeChannelConfig(
+          ack: true,
+          self: true,
+        ));
 
     _game = AlienBattleGame(
         zoom: zoom,
