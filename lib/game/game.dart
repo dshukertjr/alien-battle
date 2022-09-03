@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:alienbattle/main.dart';
-import 'package:flame/components.dart';
+import 'package:flame/components.dart' hide Timer;
 import 'package:flame/input.dart';
-import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flame_forge2d/flame_forge2d.dart' hide Timer;
 import 'package:flutter/material.dart';
 import 'package:alienbattle/game/alien.dart';
 

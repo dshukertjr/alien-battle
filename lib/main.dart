@@ -144,8 +144,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final players = _lobbyPlayers.values.toList();
 
     // Remove self from presence
-    await _lobbyChannel.track({});
-    await _lobbyChannel.unsubscribe();
+    await _lobbyChannel.untrack();
 
     _roomChannel = _client.channel(roomId);
 
