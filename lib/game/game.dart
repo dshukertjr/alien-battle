@@ -15,9 +15,10 @@ class AlienBattleGame extends Forge2DGame
     required this.onSelfRelease,
     required List<Player> players,
     required String myUserId,
+    required double zoom,
   })  : _players = players,
         _myUserId = myUserId,
-        super(gravity: Vector2(0, 0), zoom: 10);
+        super(gravity: Vector2(0, 0), zoom: zoom);
 
   final List<Alien> aliens = [];
   final void Function(bool didWin) onGameOver;

@@ -148,7 +148,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     _roomChannel = _client.channel(roomId);
 
+    final width = MediaQuery.of(context).size.width;
+    final zoom = width / 400 * 10;
+
     _game = AlienBattleGame(
+        zoom: zoom,
         onGameOver: _onGameOver,
         myUserId: _myUserId,
         players: players,
@@ -171,7 +175,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     _roomChannel.on(RealtimeListenTypes.broadcast, ChannelFilter(event: roomId),
         (payload, [ref]) {
-      print(payload);
       // get release velocity and release it here
       final Map<String, dynamic> velocity = payload['velocity'];
       final x = velocity['x'] as double;
