@@ -5,11 +5,15 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:alienbattle/game/game.dart';
 import 'package:alienbattle/utils/constants.dart';
-import 'package:realtime_client/realtime_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vibration/vibration.dart';
 
-void main() {
+Future<void> main() async {
+  await Supabase.initialize(
+      url: 'https://nlbsnpoablmsxwkdbmer.supabase.co',
+      anonKey:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTYyOTE5ODEwMiwiZXhwIjoxOTQ0Nzc0MTAyfQ.XZWLzz95pyU9msumQNsZKNBXfyss-g214iTVAwyQLPA');
   runApp(const MyApp());
 }
 
@@ -57,12 +61,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     _myUserId = _generateUuid();
 
-    _client = RealtimeClient(
-        'ws://nlbsnpoablmsxwkdbmer.supabase.co/realtime/v1',
-        params: {
-          'apikey':
-              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTYyOTE5ODEwMiwiZXhwIjoxOTQ0Nzc0MTAyfQ.XZWLzz95pyU9msumQNsZKNBXfyss-g214iTVAwyQLPA'
-        });
+    _client = Supabase.instance.client.realtime;
 
     _lobbyChannel = _client.channel(
         'lobby',
@@ -103,7 +102,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       });
     });
 
-    _lobbyChannel.subscribe((status, [_]) async {
+    _lobbyChannel.subscribe((status, [err]) async {
+      print('Presence status : $status - $err');
       if (status == 'SUBSCRIBED') {
         await _lobbyChannel.track({
           'user_id': _myUserId,
@@ -144,7 +144,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final players = _lobbyPlayers.values.toList();
 
     final width = MediaQuery.of(context).size.width;
-    final zoom = width / 400 * 10;
+    final zoom = width / 300 * 10.0;
 
     // Remove self from presence
     await _lobbyChannel.untrack();
@@ -186,6 +186,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final y = velocity['y'] as double;
       final userId = payload['user_id'] as String;
       final releaseVelocity = Vector2(x, y);
+      print(payload);
       _game?.releaseAlien(userId: userId, releaseVelocity: releaseVelocity);
     }).subscribe();
 
@@ -322,8 +323,10 @@ class _InGameState extends State<InGame> {
               child: GameWidget(
                   game: widget.game
                     ..onDamage = () async {
-                      Vibration.vibrate(
-                          duration: _turningRedDuration.inMilliseconds);
+                      if (await Vibration.hasVibrator() == true) {
+                        Vibration.vibrate(
+                            duration: _turningRedDuration.inMilliseconds);
+                      }
 
                       _damageEffectTimer?.cancel();
                       setState(() {

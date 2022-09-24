@@ -16,8 +16,7 @@ dependencies:
   flame_forge2d: ^0.12.1
   vibration: ^1.7.6
   uuid: ^3.0.6
-  realtime_client:
-    path: ../realtime-dart
+  supabase_flutter: 1.0.0-dev.8
 
 dev_dependencies:
   flutter_test:
